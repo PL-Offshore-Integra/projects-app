@@ -507,6 +507,21 @@ const unirPerfiles = (perfiles, tareas) => {
   return out.sort((a, b) => a.label.localeCompare(b.label, "es"));
 };
 
+//  ÍCONOS SVG · reemplazan a los emoji, que se pierden al copiar/pegar el archivo 
+const Glyph = ({ d, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+       style={{ display: "block", flexShrink: 0 }}>{d}</svg>
+);
+const GLYPHS = {
+  lapiz:    <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>,
+  carrito:  <><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /><path d="M2 3h2.5l2.6 12h11.3l2.1-8H6" /></>,
+  persona:  <><circle cx="12" cy="8" r="3.6" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
+  tarea:    <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M8.5 12.5l2.4 2.4 4.6-5" /></>,
+  chevronD: <path d="M6 9l6 6 6-6" />,
+  chevronR: <path d="M9 6l6 6-6 6" />,
+};
+
 //  ESCALAS DEL GANTT · de más fina a más gruesa 
 const ESCALAS = [
   { id: "dia",       label: "Días",       maxDias: 45,       minPx: 34 },
@@ -1570,8 +1585,13 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
                               <button
                                 className="btn btn-cotizar btn-sm"
                                 onClick={() => setCotizarOrigen({ tipo: "subtarea", nombre: s.descripcion, id: s.id, proyectoId, proyectoEmpresa: tarea?._empresa, proyectoNombre: tarea?._proyectoNombre })}
-                              ></button>
-                              <button className="btn btn-ghost btn-sm" onClick={() => handleEditarSubtarea(s)}></button>
+                                title="Generar pedido de compra para esta subtarea"
+                              ><Glyph d={GLYPHS.carrito} /> Cotizar</button>
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => handleEditarSubtarea(s)}
+                                title="Editar subtarea"
+                              ><Glyph d={GLYPHS.lapiz} /> Editar</button>
                               {confirmEliminarSubId === s.id ? (
                                 <span className="flex-gap">
                                   <span style={{ fontSize: 10, color: "var(--danger)" }}>¿Eliminar?</span>
@@ -1723,7 +1743,7 @@ function ResponsablePopover({ resp, tareas, subsPorResponsable, today }) {
           onMouseLeave={handleMouseLeave}
         >
           <div className="resp-popover-hdr">
-            <span style={{ fontSize: 16 }}></span>
+            <Glyph d={GLYPHS.persona} size={15} />
             <div className="resp-popover-hdr-name">{resp}</div>
             <div style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 9, opacity: .6 }}>
               {misTareas.length} tarea{misTareas.length !== 1 ? "s" : ""} · {misSubtareas.length} subtarea{misSubtareas.length !== 1 ? "s" : ""}
@@ -2118,12 +2138,25 @@ function PageProyectos({ onSelectProyecto, notify, filtroEmpresaExterno = "", so
 //  ÍCONO POR TIPO DE ARCHIVO 
 function FileIcon({ tipo, nombre }) {
   const ext = (nombre || "").split(".").pop().toLowerCase();
-  if (["pdf"].includes(ext)) return <span style={{ color: "#C0392B", fontSize: 16 }}></span>;
-  if (["xls","xlsx","csv"].includes(ext)) return <span style={{ color: "#1E7A4A", fontSize: 16 }}></span>;
-  if (["doc","docx"].includes(ext)) return <span style={{ color: "#235C96", fontSize: 16 }}></span>;
-  if (["jpg","jpeg","png","gif","webp"].includes(ext)) return <span style={{ color: "#B07D0A", fontSize: 16 }}></span>;
-  if (["eml","msg"].includes(ext)) return <span style={{ color: "#6381A7", fontSize: 16 }}></span>;
-  return <span style={{ fontSize: 16 }}></span>;
+  // Badge con la extensión en texto: no depende de emoji ni de fuentes con soporte
+  const MAPA = [
+    { exts: ["pdf"], label: "PDF", color: "#C0392B" },
+    { exts: ["xls", "xlsx", "csv"], label: "XLS", color: "#1E7A4A" },
+    { exts: ["doc", "docx"], label: "DOC", color: "#235C96" },
+    { exts: ["jpg", "jpeg", "png", "gif", "webp"], label: "IMG", color: "#B07D0A" },
+    { exts: ["eml", "msg"], label: "MAIL", color: "#6381A7" },
+  ];
+  const m = MAPA.find(x => x.exts.includes(ext));
+  const label = m ? m.label : (ext ? ext.slice(0, 4).toUpperCase() : "FILE");
+  const color = m ? m.color : "var(--muted)";
+  return (
+    <span title={nombre || tipo || label} style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "var(--mono)", fontSize: 9, fontWeight: 600, letterSpacing: ".04em",
+      color, border: `1px solid ${color}`, borderRadius: 2,
+      padding: "1px 3px", minWidth: 30, flexShrink: 0, lineHeight: 1.4,
+    }}>{label}</span>
+  );
 }
 
 function fmtTamanio(bytes) {
@@ -2315,7 +2348,7 @@ function AdjuntosTareasTab({ proyectoId, tareas, notify }) {
           <div key={t.id} className="card" style={{ marginBottom: 12 }}>
             {/*  Header tarea  */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: adjsTarea.length > 0 || subs.length > 0 ? 12 : 0 }}>
-              <span style={{ fontSize: 13 }}></span>
+              <span style={{ color: "var(--muted)" }}><Glyph d={GLYPHS.tarea} size={15} /></span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--navy)" }}>{t.nombre}</div>
                 <div style={{ fontSize: 10, color: "var(--muted)" }}>
@@ -2811,7 +2844,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
                               title={tareasExpandidas[t.id] ? "Contraer subtareas" : "Expandir subtareas"}
                               style={{ color: "var(--blue)", fontSize: 10, cursor: "pointer", flexShrink: 0, userSelect: "none" }}
                             >
-                              {tareasExpandidas[t.id] ? "" : ""}
+                              <Glyph d={tareasExpandidas[t.id] ? GLYPHS.chevronD : GLYPHS.chevronR} size={12} />
                             </span>
                           )}
                           {subtareas.length > 0 && <span style={{ fontSize: 9, color: "var(--muted)", fontFamily: "var(--mono)" }}>{subtareas.length} sub</span>}
