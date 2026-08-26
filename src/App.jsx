@@ -464,6 +464,49 @@ const fmtDate  = d => d ? new Date(d + "T00:00:00").toLocaleDateString("es-AR") 
 const diffDays = (a, b) => Math.ceil((new Date(b) - new Date(a)) / 86400000);
 const today    = () => new Date().toISOString().split("T")[0];
 
+// Une el catálogo de `perfiles` con los nombres YA asignados en tareas y subtareas.
+// Motivo: si alguien está inactivo, tiene `activo` NULL, o directamente no tiene fila
+// en `perfiles`, antes desaparecía del select y no se podía re-seleccionar.
+// Devuelve [{ id, label, nota }] ordenado alfabéticamente.
+const unirPerfiles = (perfiles, tareas) => {
+  const asignados = new Set();
+  (tareas || []).forEach(t => {
+    [t?.owner, t?.responsable, ...((t?.subtareas || []).map(s => s?.responsable))].forEach(v => {
+      const s = (v || "").trim();
+      if (s) asignados.add(s.toLowerCase());
+    });
+  });
+
+  const out = [], vistos = new Set();
+  const push = (id, label, nota) => {
+    const k = label.toLowerCase();
+    if (!label || vistos.has(k)) return;
+    vistos.add(k);
+    out.push({ id, label, nota: nota || null });
+  };
+
+  (perfiles || []).forEach(p => {
+    const label = (p?.nombre || p?.email || "").trim();
+    if (!label) return;
+    if (p.activo === false) {
+      // Inactivo: solo se muestra si ya tiene algo asignado, para no perder el valor
+      if (asignados.has(label.toLowerCase())) push(p.id, label, "inactivo");
+      return;
+    }
+    push(p.id, label, null);
+  });
+
+  // Asignados que no están en el catálogo de perfiles
+  (tareas || []).forEach(t => {
+    [t?.owner, t?.responsable, ...((t?.subtareas || []).map(s => s?.responsable))].forEach(v => {
+      const label = (v || "").trim();
+      if (label) push(`ext-${label}`, label, "fuera del catálogo");
+    });
+  });
+
+  return out.sort((a, b) => a.label.localeCompare(b.label, "es"));
+};
+
 //  ESCALAS DEL GANTT · de más fina a más gruesa 
 const ESCALAS = [
   { id: "dia",       label: "Días",       maxDias: 45,       minPx: 34 },
@@ -519,9 +562,16 @@ function calcFechaFin(inicio, duracion, diasHabiles) {
 //  API 
 const api = {
   async getPerfiles() {
-    const { data, error } = await supabase.from("perfiles").select("id, nombre, email").eq("activo", true).order("nombre");
+    // Sin .eq("activo", true): en Postgres NULL no matchea igualdad, así que los
+    // perfiles con `activo` NULL (filas creadas antes de agregar la columna)
+    // desaparecían del select. El filtrado se hace en unirPerfiles(), que además
+    // conserva a los inactivos si ya tienen tareas asignadas.
+    const { data, error } = await supabase.from("perfiles").select("id, nombre, email, activo, tipo").order("nombre");
     if (error) throw error;
-    return data || [];
+    // Solo personas en los selects de owner/responsable. Las cuentas de buque y
+    // sucursal existen en `perfiles` (necesitan loguearse) pero no son asignables.
+    // `tipo` NULL cuenta como persona para no romper si falta la migración.
+    return (data || []).filter(p => !["buque", "sucursal"].includes(p?.tipo));
   },
   async getRecursosCatalogo() {
     const { data, error } = await supabase.from("proyecto_recursos_catalogo").select("*").eq("activo", true).order("nombre");
@@ -1047,6 +1097,9 @@ function ProyectoModal({ proyecto, onClose, onSave }) {
       .catch(e => console.error("Error cargando catálogos:", e));
   }, []);
 
+  // Catálogo + el responsable ya guardado, para que nunca se pierda el valor actual
+  const opcionesPersona = unirPerfiles(perfiles, [{ responsable: form.responsable }]);
+
   //  Recursos 
   const toggleRecurso = (nombre) => {
     setRecursos(prev =>
@@ -1130,8 +1183,8 @@ function ProyectoModal({ proyecto, onClose, onSave }) {
             <FG label="Responsable">
               <select value={form.responsable || ""} onChange={e => set("responsable", e.target.value)}>
                 <option value="">Sin asignar</option>
-                {perfiles.map(p => (
-                  <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                {opcionesPersona.map(p => (
+                  <option key={p.id} value={p.label}>{p.label}{p.nota ? ` · ${p.nota}` : ""}</option>
                 ))}
               </select>
             </FG>
@@ -1239,6 +1292,7 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
     razon_desvio: tarea?.razon_desvio || "",
   });
   const [perfiles, setPerfiles]         = useState([]);
+  const [perfilesError, setPerfilesError] = useState(null);
   const [subtareas, setSubtareas]       = useState([]);
   const [saving, setSaving]             = useState(false);
   const [savingSubtarea, setSavingSubtarea] = useState(false);
@@ -1253,7 +1307,13 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
   const setSub = (k, v) => setSubForm(f => ({ ...f, [k]: v }));
 
   useEffect(() => {
-    api.getPerfiles().then(setPerfiles).catch(e => console.error("Perfiles:", e));
+    api.getPerfiles()
+      .then(ps => { setPerfiles(ps); setPerfilesError(null); })
+      .catch(e => {
+        console.error("Perfiles:", e);
+        setPerfilesError(e.message);
+        notify?.("No se pudieron cargar los perfiles: " + e.message, "error");
+      });
     if (tarea?.id) {
       api.getSubtareas(tarea.id).then(subs => {
         setSubtareas(subs);
@@ -1346,6 +1406,11 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
   };
 
   const otrasTareas = tareas.filter(t => t.id !== tarea?.id);
+  // Catálogo + gente ya asignada en este proyecto (incluye subtareas cargadas)
+  const opcionesPersona = unirPerfiles(
+    perfiles,
+    [...(tareas || []), { subtareas }, { owner: form.owner, responsable: form.responsable }]
+  );
 
   const inStyle = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", fontFamily: "var(--sans)", fontSize: 12, padding: "6px 10px", outline: "none", width: "100%" };
 
@@ -1381,15 +1446,22 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
               <FG label="Owner (responsable final)">
                 <select value={form.owner || ""} onChange={e => set("owner", e.target.value)}>
                   <option value="">Sin asignar</option>
-                  {perfiles.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                  {opcionesPersona.map(p => <option key={p.id} value={p.label}>{p.label}{p.nota ? ` · ${p.nota}` : ""}</option>)}
                 </select>
               </FG>
               <FG label="Responsable de ejecución">
                 <select value={form.responsable || ""} onChange={e => set("responsable", e.target.value)}>
                   <option value="">Sin asignar</option>
-                  {perfiles.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                  {opcionesPersona.map(p => <option key={p.id} value={p.label}>{p.label}{p.nota ? ` · ${p.nota}` : ""}</option>)}
                 </select>
               </FG>
+              {perfilesError && (
+                <div className="info-box danger" style={{ gridColumn: "1 / -1", fontSize: 11 }}>
+                  No se pudo leer la tabla <code>perfiles</code> ({perfilesError}). El listado
+                  muestra solo a las personas ya asignadas en este proyecto. Revisá las políticas
+                  RLS de <code>perfiles</code> para el rol <code>authenticated</code>.
+                </div>
+              )}
               <FG label="Status">
                 <select value={form.status} onChange={e => set("status", e.target.value)}>
                   {Object.entries(STATUS_TAREA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -1459,7 +1531,7 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
                       <FG label="Responsable">
                         <select value={subForm.responsable} onChange={e => setSub("responsable", e.target.value)}>
                           <option value="">Sin asignar</option>
-                          {perfiles.map(p => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                          {opcionesPersona.map(p => <option key={p.id} value={p.label}>{p.label}{p.nota ? ` · ${p.nota}` : ""}</option>)}
                         </select>
                       </FG>
                       {/* fecha_real_fin y razon_desvio solo en edición — al crear no tiene sentido completarlos */}
