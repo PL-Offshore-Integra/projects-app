@@ -372,6 +372,74 @@ tr.click:hover td{background:var(--surface2);cursor:pointer}
   .main{padding-bottom:72px}
 }
 
+
+/*  GANTT · grilla de tiempo  */
+.gantt-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.gantt-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.gantt-inner{width:max-content;min-width:100%}
+.gantt-header{display:grid;background:var(--surface2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+.gh-cell{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.03em;color:var(--muted);text-transform:uppercase;padding:7px 2px;text-align:center;white-space:nowrap;overflow:hidden;border-right:1px solid var(--border)}
+.gh-cell:last-child{border-right:0}
+.gantt-row{display:grid;border-bottom:1px solid var(--border);background:var(--surface)}
+.gantt-row:last-child{border-bottom:0}
+.gantt-row:hover{filter:brightness(.98)}
+.gc-label{padding:8px 10px;border-right:1px solid var(--border);min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.gc-name{font-size:11px;font-weight:600;color:var(--navy);line-height:1.3;word-break:break-word;display:flex;align-items:center;gap:6px}
+.gc-sub{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-bars{position:relative;min-height:44px;padding:14px 0;overflow:hidden}
+.cc-badge{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:600;line-height:1;letter-spacing:.06em;color:#fff;background:var(--danger);border-radius:2px;padding:2px 4px;flex-shrink:0}
+
+/*  barras de tarea  */
+.bar{position:absolute;top:12px;height:16px;border-radius:3px;min-width:3px}
+.bar.normal{background:#9EB3C8}
+.bar.critical{background:var(--danger)}
+.bar.late{background:var(--warn)}
+.bar.done{background:repeating-linear-gradient(45deg,rgba(30,122,74,.55) 0px,rgba(30,122,74,.55) 3px,#9EB3C8 3px,#9EB3C8 8px);border:1px solid rgba(30,122,74,.7)}
+.bar-underline{position:absolute;top:31px;height:3px;border-radius:2px;min-width:2px}
+.bar-tick{position:absolute;top:26px;width:2px;height:12px;border-radius:1px}
+.bar-real-label{position:absolute;top:0;font-family:var(--mono);font-size:8px;font-weight:600;white-space:nowrap;pointer-events:none}
+
+/*  LISTA DE TAREAS  */
+.tarea-row{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:var(--tr)}
+.tarea-row:hover{background:var(--surface2)}
+.tarea-row.critica{border-left-color:var(--danger)}
+.tarea-row.atrasada{border-left-color:var(--warn)}
+.pct-bar{height:5px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.pct-fill{height:100%;background:var(--action);border-radius:3px;transition:width 200ms cubic-bezier(.2,0,.38,.9)}
+.pct-fill.critical{background:var(--danger)}
+.pct-fill.done{background:var(--accent2)}
+.recurso-tag{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px 8px}
+.btn-cotizar{background:var(--action);color:#fff}
+.btn-cotizar:hover{background:var(--navy)}
+
+/*  DIAS HABILES · toggles de la semana laboral  */
+.dia-btn{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;min-width:44px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r);border:1px solid var(--border2);cursor:pointer;user-select:none;transition:var(--tr)}
+.dia-btn.active{background:var(--action);border-color:var(--action);color:#fff}
+.dia-btn.inactive{background:var(--surface);color:var(--muted2)}
+.dia-btn.inactive:hover{background:var(--surface2);color:var(--text);border-color:var(--muted2)}
+
+/*  PANTALLA COMPLETA  */
+.fullscreen-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column}
+.fs-topbar{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex:0 0 auto}
+.fs-title{font-size:15px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;font:500 13px/1 var(--sans);color:var(--muted);background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);cursor:pointer;transition:var(--tr)}
+.fs-btn:hover{color:var(--text);background:var(--surface2)}
+.fs-content{flex:1 1 auto;overflow:auto;padding:20px}
+
+/*  POPOVER DE RESPONSABLE  */
+.resp-cell{cursor:default}
+.resp-cell-name{font-size:12px;color:var(--text);border-bottom:1px dotted var(--border2);white-space:nowrap}
+.resp-popover{position:fixed;z-index:300;width:320px;max-height:340px;overflow:hidden;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 8px 24px rgba(15,20,25,.14)}
+.resp-popover-hdr{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--nav);color:#fff;flex:0 0 auto}
+.resp-popover-hdr-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resp-popover-body{padding:8px 12px 12px;overflow-y:auto}
+.resp-pop-section{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);margin:8px 0 5px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.resp-pop-row,.resp-pop-sub-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+.resp-pop-name{font-size:11px;color:var(--text);flex:1;min-width:0;word-break:break-word}
+.resp-pop-sub-name{font-size:10px;color:var(--muted);flex:1;min-width:0;padding-left:10px;word-break:break-word}
+.resp-pop-sub-name::before{content:'↳';margin-right:4px;color:var(--muted2)}
+.resp-pop-badge{flex:0 0 auto}
+.resp-pop-empty{font-size:11px;color:var(--muted2);padding:10px 0;text-align:center}
 `;
 
 const STATUS_PROYECTO = {
@@ -395,6 +463,46 @@ const DIAS_DEFAULT = [true, true, true, true, true, false, false];
 const fmtDate  = d => d ? new Date(d + "T00:00:00").toLocaleDateString("es-AR") : "—";
 const diffDays = (a, b) => Math.ceil((new Date(b) - new Date(a)) / 86400000);
 const today    = () => new Date().toISOString().split("T")[0];
+
+//  ESCALAS DEL GANTT · de más fina a más gruesa 
+const ESCALAS = [
+  { id: "dia",       label: "Días",       maxDias: 45,       minPx: 34 },
+  { id: "semana",    label: "Semanas",    maxDias: 210,      minPx: 46 },
+  { id: "mes",       label: "Meses",      maxDias: 1100,     minPx: 58 },
+  { id: "trimestre", label: "Trimestres", maxDias: 3300,     minPx: 60 },
+  { id: "semestre",  label: "Semestres",  maxDias: Infinity, minPx: 64 },
+];
+const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+// Inicio del período que contiene ms (todo en UTC: las fechas vienen como YYYY-MM-DD)
+const bucketStart = (ms, unidad) => {
+  const dt = new Date(ms);
+  const y = dt.getUTCFullYear(), m = dt.getUTCMonth();
+  if (unidad === "dia")    return Date.UTC(y, m, dt.getUTCDate());
+  if (unidad === "semana") return Date.UTC(y, m, dt.getUTCDate()) - ((dt.getUTCDay() + 6) % 7) * 86400000;
+  if (unidad === "mes")       return Date.UTC(y, m, 1);
+  if (unidad === "trimestre") return Date.UTC(y, Math.floor(m / 3) * 3, 1);
+  return Date.UTC(y, m < 6 ? 0 : 6, 1);
+};
+const bucketNext = (ms, unidad) => {
+  const dt = new Date(ms);
+  const y = dt.getUTCFullYear(), m = dt.getUTCMonth();
+  if (unidad === "dia")    return ms + 86400000;
+  if (unidad === "semana") return ms + 7 * 86400000;
+  if (unidad === "mes")       return Date.UTC(y, m + 1, 1);
+  if (unidad === "trimestre") return Date.UTC(y, m + 3, 1);
+  return Date.UTC(y, m + 6, 1);
+};
+const bucketLabel = (ms, unidad) => {
+  const dt = new Date(ms);
+  const yy = String(dt.getUTCFullYear()).slice(2);
+  const mes = MESES_CORTOS[dt.getUTCMonth()];
+  if (unidad === "dia")       return `${dt.getUTCDate()} ${mes}`;
+  if (unidad === "semana")    return `${dt.getUTCDate()}/${dt.getUTCMonth() + 1}`;
+  if (unidad === "mes")       return `${mes} ${yy}`;
+  if (unidad === "trimestre") return `Q${Math.floor(dt.getUTCMonth() / 3) + 1} ${yy}`;
+  return `S${dt.getUTCMonth() < 6 ? 1 : 2} ${yy}`;
+};
 
 function calcFechaFin(inicio, duracion, diasHabiles) {
   if (!inicio || !duracion || !diasHabiles?.some(d => d)) return "";
@@ -2244,6 +2352,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
   const [fullscreen, setFullscreen]   = useState(null); // "gantt" | "detalle" | null
   const [tareasOrden, setTareasOrden]       = useState(null); // orden visual drag & drop
   const [tareasExpandidas, setTareasExpandidas] = useState({}); // id -> bool
+  const [escalaGantt, setEscalaGantt] = useState("auto"); // "auto" | dia | semana | mes | trimestre | semestre
   const dragIdx = useRef(null);
 
   const toggleExpandir = (id, e) => {
@@ -2335,20 +2444,46 @@ function PageDetalle({ proyectoId, onBack, notify }) {
     return "normal";
   };
 
-  const meses = [];
+  //  ESCALA ADAPTATIVA DEL EJE DE TIEMPO 
+  // La unidad se elige según el span total del proyecto: con una tarea de 600+ días
+  // la escala mensual genera 30+ columnas y el eje se vuelve ilegible, por eso se
+  // degrada a trimestres / semestres. El usuario puede forzar la unidad con el selector.
+  const escalaAuto = ESCALAS.find(e => totalDias <= e.maxDias) || ESCALAS[ESCALAS.length - 1];
+  const escala = escalaGantt === "auto"
+    ? escalaAuto
+    : (ESCALAS.find(e => e.id === escalaGantt) || escalaAuto);
+
+  // Períodos con su ancho REAL en días. Al ponderar las columnas por días (y no
+  // repartirlas en partes iguales) las barras, que se posicionan en % sobre el span
+  // total, quedan alineadas con el encabezado.
+  const periodos = [];
   if (minFecha && maxFecha) {
-    let cur = new Date(minFecha);
-    const end = new Date(maxFecha);
-    while (cur <= end) {
-      meses.push(cur.toLocaleString("es-AR", { month: "short", year: "2-digit" }));
-      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    const D = 86400000;
+    const startMs = new Date(minFecha).getTime();
+    const endMs   = startMs + totalDias * D;
+    if (Number.isFinite(startMs) && endMs > startMs) {
+      let cur = bucketStart(startMs, escala.id);
+      let guard = 0;
+      while (cur < endMs && guard < 500) {
+        const next  = bucketNext(cur, escala.id);
+        if (!(next > cur)) break;
+        const desde = Math.max(cur, startMs);
+        const hasta = Math.min(next, endMs);
+        periodos.push({ label: bucketLabel(cur, escala.id), dias: Math.max((hasta - desde) / D, 0.01) });
+        cur = next;
+        guard++;
+      }
     }
   }
 
-  // Columna de tareas 220px + columnas de meses con mínimo de 900px en el área de barras
-  // para que los labels de fecha real (que quedan fuera de la barra) no queden cortados
-  const barsMinWidth = Math.max(meses.length * 80, 900);
-  const cols = `220px ${meses.length > 0 ? `repeat(${meses.length}, minmax(${Math.round(barsMinWidth / meses.length)}px, 1fr))` : "minmax(900px,1fr)"}`;
+  // Columna de tareas 220px + columnas de tiempo. El mínimo en px por período evita
+  // que las etiquetas se corten; el área de barras nunca baja de 640px para que los
+  // labels de fecha real (que caen fuera de la barra) sigan siendo legibles.
+  const anchoBarras = Math.max(periodos.length * escala.minPx, 640);
+  const pxPorDia    = totalDias > 0 ? anchoBarras / totalDias : 1;
+  const cols = periodos.length > 0
+    ? `220px ${periodos.map(p => `minmax(${Math.max(Math.round(p.dias * pxPorDia), 10)}px, ${p.dias.toFixed(3)}fr)`).join(" ")}`
+    : "220px minmax(640px,1fr)";
 
   const handleEliminarTarea = async (id) => {
     try {
@@ -2539,7 +2674,19 @@ function PageDetalle({ proyectoId, onBack, notify }) {
           <div key={t.id} className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>{t.label}</div>
         ))}
         {tab === "gantt" && (
-          <div style={{display:"flex",gap:8,marginLeft:"auto"}}>
+          <div style={{display:"flex",gap:8,marginLeft:"auto",alignItems:"center"}}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, fontFamily: "var(--mono)", fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Escala
+              <select
+                value={escalaGantt}
+                onChange={e => setEscalaGantt(e.target.value)}
+                title="Unidad del eje de tiempo"
+                style={{ height: 28, padding: "0 8px", fontFamily: "var(--sans)", fontSize: 13, color: "var(--text)", background: "var(--surface)", border: "1px solid var(--border2)", borderRadius: "var(--r)", outline: "none", cursor: "pointer" }}
+              >
+                <option value="auto">Auto ({escalaAuto.label.toLowerCase()})</option>
+                {ESCALAS.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}
+              </select>
+            </label>
             <button
               className="btn btn-ghost btn-sm"
               onClick={() => setModalMail(true)}
@@ -2562,8 +2709,8 @@ function PageDetalle({ proyectoId, onBack, notify }) {
           <div className="gantt-inner">
           <div className="gantt-header" style={{ gridTemplateColumns: cols }}>
             <div className="gh-cell" style={{ textAlign: "center", borderRight: "1px solid var(--border)" }}>Tarea</div>
-            {meses.map((m, i) => <div key={i} className="gh-cell">{m}</div>)}
-            {meses.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
+            {periodos.map((p, i) => <div key={i} className="gh-cell">{p.label}</div>)}
+            {periodos.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
           </div>
           {tareasOrdenadas.length === 0
             ? <div className="empty-state">Sin tareas — usá "+ Nueva tarea" para empezar</div>
@@ -2604,7 +2751,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
                         </div>
                         <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.owner ? ` ${t.owner}` : t.responsable || "—"} · {t.duracion_dias}d · {t.porcentaje_avance || 0}%</div>
                       </div>
-                      <div className="gc-bars" style={{ gridColumn: `2 / ${meses.length + 2}`, background: "#fff" }}>
+                      <div className="gc-bars" style={{ gridColumn: `2 / ${periodos.length + 2}`, background: "#fff" }}>
                         {barStyle ? (
                           <>
                             <div className={`bar ${getBarClass(t)}`} style={barStyle} />
@@ -2641,7 +2788,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
                             <div style={{ fontSize: 10, fontWeight: 600, color: "var(--mid)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>↳ {s.descripcion}</div>
                             <div style={{ fontSize: 9, color: "var(--muted2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.responsable || "—"} · {s.porcentaje_avance || 0}%</div>
                           </div>
-                          <div className="gc-bars" style={{ gridColumn: `2 / ${meses.length + 2}` }}>
+                          <div className="gc-bars" style={{ gridColumn: `2 / ${periodos.length + 2}` }}>
                             {sStyle ? (
                               <>
                                 <div style={{
@@ -2866,8 +3013,8 @@ function PageDetalle({ proyectoId, onBack, notify }) {
             <div className="gantt-inner">
             <div className="gantt-header" style={{ gridTemplateColumns: cols }}>
               <div className="gh-cell" style={{ textAlign: "center", borderRight: "1px solid var(--border)" }}>Tarea</div>
-              {meses.map((m, i) => <div key={i} className="gh-cell">{m}</div>)}
-              {meses.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
+              {periodos.map((p, i) => <div key={i} className="gh-cell">{p.label}</div>)}
+              {periodos.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
             </div>
             {tareas.length === 0
               ? <div className="empty-state">Sin tareas</div>
@@ -2884,7 +3031,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
                         <div className="gc-name">{t.nombre}{criticas.has(t.id) && <span className="cc-badge">CC</span>}</div>
                         <div className="gc-sub">{t.owner ? ` ${t.owner}` : t.responsable || "—"} · {t.duracion_dias}d · {t.porcentaje_avance || 0}%</div>
                       </div>
-                      <div className="gc-bars" style={{ gridColumn: `2 / ${meses.length + 2}`, background: "#fff" }}>
+                      <div className="gc-bars" style={{ gridColumn: `2 / ${periodos.length + 2}`, background: "#fff" }}>
                         {barStyle ? (
                           <>
                             <div className={`bar ${getBarClass(t)}`} style={barStyle} />
@@ -3063,8 +3210,8 @@ function PageDetalle({ proyectoId, onBack, notify }) {
               <div className="gantt-inner">
               <div className="gantt-header" style={{ gridTemplateColumns: cols }}>
                 <div className="gh-cell" style={{ textAlign: "center", borderRight: "1px solid var(--border)" }}>Tarea</div>
-                {meses.map((m, i) => <div key={i} className="gh-cell">{m}</div>)}
-                {meses.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
+                {periodos.map((p, i) => <div key={i} className="gh-cell">{p.label}</div>)}
+                {periodos.length === 0 && <div className="gh-cell">Línea de tiempo</div>}
               </div>
               {tareas.map(t => {
                 const barStyle = getBarStyle(t);
@@ -3079,7 +3226,7 @@ function PageDetalle({ proyectoId, onBack, notify }) {
                       <div className="gc-name">{t.nombre}{criticas.has(t.id) && <span className="cc-badge">CC</span>}</div>
                       <div className="gc-sub">{t.owner ? ` ${t.owner}` : t.responsable || "—"} · {t.duracion_dias}d · {t.porcentaje_avance || 0}%</div>
                     </div>
-                    <div className="gc-bars" style={{ gridColumn: `2 / ${meses.length + 2}` }}>
+                    <div className="gc-bars" style={{ gridColumn: `2 / ${periodos.length + 2}` }}>
                       {barStyle ? (
                         <>
                           <div className={`bar ${getBarClass(t)}`} style={barStyle} />
