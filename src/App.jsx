@@ -464,23 +464,74 @@ const fmtDate  = d => d ? new Date(d + "T00:00:00").toLocaleDateString("es-AR") 
 const diffDays = (a, b) => Math.ceil((new Date(b) - new Date(a)) / 86400000);
 const today    = () => new Date().toISOString().split("T")[0];
 
+//  IDENTIDAD DE PERSONAS 
+// Los campos owner / responsable guardan un STRING libre, no un FK a `perfiles`.
+// Con el tiempo se guardaron formatos distintos para la misma persona:
+// "Federico Ruiz", "federico.ruiz@terra-mare.com.ar", "emartinez"...
+// Estos helpers reconcilian todas esas formas contra una única etiqueta canónica.
+
+// Normaliza para comparar: minúsculas, sin acentos, sin espacios de más.
+const normPersona = (v) => (v ?? "").toString().trim().toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+
+// Todas las formas con las que una misma persona pudo haberse guardado.
+// Ej. perfil { nombre: "Emiliano Martínez", email: "emartinez@terra-mare.com.ar" }
+// genera: "emiliano martinez", "emartinez@terra-mare.com.ar", "emartinez",
+//         "emiliano.martinez"
+const clavesPerfil = (p) => {
+  const claves = [];
+  const add = (v) => { const k = normPersona(v); if (k && !claves.includes(k)) claves.push(k); };
+  add(p?.nombre);
+  add(p?.email);
+  if (p?.email && p.email.includes("@")) add(p.email.split("@")[0]);
+  if (p?.nombre) {
+    add(p.nombre.replace(/\s+/g, "."));      // "federico.ruiz"
+    add(p.nombre.replace(/\s+/g, ""));       // "federicoruiz"
+  }
+  return claves;
+};
+
+// Dado un valor guardado, devuelve la etiqueta canónica del perfil que le corresponde.
+// Si no matchea ningún perfil, devuelve el valor original limpio.
+const canonPersona = (valor, perfiles) => {
+  const k = normPersona(valor);
+  if (!k) return "";
+  for (const p of (perfiles || [])) {
+    const label = (p?.nombre || p?.email || "").trim();
+    if (!label) continue;
+    if (clavesPerfil(p).includes(k)) return label;
+  }
+  return (valor ?? "").toString().trim();
+};
+
 // Une el catálogo de `perfiles` con los nombres YA asignados en tareas y subtareas.
 // Motivo: si alguien está inactivo, tiene `activo` NULL, o directamente no tiene fila
 // en `perfiles`, antes desaparecía del select y no se podía re-seleccionar.
 // Devuelve [{ id, label, nota }] ordenado alfabéticamente.
 const unirPerfiles = (perfiles, tareas) => {
+  // Todos los valores asignados en tareas / subtareas, normalizados
   const asignados = new Set();
   (tareas || []).forEach(t => {
     [t?.owner, t?.responsable, ...((t?.subtareas || []).map(s => s?.responsable))].forEach(v => {
-      const s = (v || "").trim();
-      if (s) asignados.add(s.toLowerCase());
+      const k = normPersona(v);
+      if (k) asignados.add(k);
     });
+  });
+
+  // Índice alias -> etiqueta canónica. Permite saber si un valor guardado
+  // "raro" en realidad SÍ corresponde a alguien del catálogo.
+  const aliasIndex = new Map();
+  (perfiles || []).forEach(p => {
+    const label = (p?.nombre || p?.email || "").trim();
+    if (!label) return;
+    clavesPerfil(p).forEach(k => { if (!aliasIndex.has(k)) aliasIndex.set(k, label); });
   });
 
   const out = [], vistos = new Set();
   const push = (id, label, nota) => {
-    const k = label.toLowerCase();
-    if (!label || vistos.has(k)) return;
+    if (!label) return;
+    const k = normPersona(label);
+    if (vistos.has(k)) return;
     vistos.add(k);
     out.push({ id, label, nota: nota || null });
   };
@@ -489,22 +540,34 @@ const unirPerfiles = (perfiles, tareas) => {
     const label = (p?.nombre || p?.email || "").trim();
     if (!label) return;
     if (p.activo === false) {
-      // Inactivo: solo se muestra si ya tiene algo asignado, para no perder el valor
-      if (asignados.has(label.toLowerCase())) push(p.id, label, "inactivo");
+      // Inactivo: solo se muestra si ya tiene algo asignado, para no perder el valor.
+      // Se chequea contra TODOS sus alias, no solo la etiqueta canónica.
+      if (clavesPerfil(p).some(k => asignados.has(k))) push(p.id, label, "inactivo");
       return;
     }
     push(p.id, label, null);
   });
 
-  // Asignados que no están en el catálogo de perfiles
+  // Asignados que realmente no corresponden a ningún perfil del catálogo.
+  // Si el valor matchea algún alias, se omite: ya está representado arriba.
   (tareas || []).forEach(t => {
     [t?.owner, t?.responsable, ...((t?.subtareas || []).map(s => s?.responsable))].forEach(v => {
-      const label = (v || "").trim();
-      if (label) push(`ext-${label}`, label, "fuera del catálogo");
+      const label = (v ?? "").toString().trim();
+      if (!label) return;
+      if (aliasIndex.has(normPersona(label))) return;
+      push(`ext-${normPersona(label)}`, label, "fuera del catálogo");
     });
   });
 
   return out.sort((a, b) => a.label.localeCompare(b.label, "es"));
+};
+
+// Guard de red: Supabase falla con "Failed to fetch" / ERR_INTERNET_DISCONNECTED
+// y sin esto el usuario no se enteraba de por qué no se guardaba nada.
+const assertOnline = () => {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new Error("Sin conexión a internet. Revisá la red y reintentá — no se perdió nada de lo que cargaste.");
+  }
 };
 
 //  ÍCONOS SVG · reemplazan a los emoji, que se pierden al copiar/pegar el archivo 
@@ -1112,6 +1175,16 @@ function ProyectoModal({ proyecto, onClose, onSave }) {
       .catch(e => console.error("Error cargando catálogos:", e));
   }, []);
 
+  // Reescribir el responsable a su etiqueta canónica una vez cargado el catálogo,
+  // por el mismo motivo que en TareaModal (emails / usuarios guardados como string).
+  useEffect(() => {
+    if (!perfiles.length) return;
+    setForm(f => {
+      const responsable = canonPersona(f.responsable, perfiles);
+      return responsable === (f.responsable || "") ? f : { ...f, responsable };
+    });
+  }, [perfiles]);
+
   // Catálogo + el responsable ya guardado, para que nunca se pierda el valor actual
   const opcionesPersona = unirPerfiles(perfiles, [{ responsable: form.responsable }]);
 
@@ -1336,11 +1409,31 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
         if (tarea._openSubtarea) {
           const s = tarea._openSubtarea;
           setEditSubtareaId(s.id);
-          setSubForm({ descripcion: s.descripcion, fecha_inicio: s.fecha_inicio || "", fecha_fin: s.fecha_fin || "", porcentaje_avance: s.porcentaje_avance || 0, responsable: s.responsable || "" });
+          // Incluir fecha_real_fin y razon_desvio: si faltan quedan undefined y
+          // al guardar se borraba silenciosamente el cierre real ya cargado.
+          setSubForm({ descripcion: s.descripcion, fecha_inicio: s.fecha_inicio || "", fecha_fin: s.fecha_fin || "", porcentaje_avance: s.porcentaje_avance || 0, responsable: s.responsable || "", fecha_real_fin: s.fecha_real_fin || "", razon_desvio: s.razon_desvio || "" });
         }
       }).catch(e => console.error("Subtareas:", e));
     }
   }, [tarea?.id]);
+
+  // Al cargar el catálogo, reescribir owner/responsable a su etiqueta canónica.
+  // Así el <select> encuentra la opción correcta (antes quedaba en "Sin asignar" si
+  // el valor guardado era un email o un usuario en vez del nombre completo) y al
+  // guardar la tarea el dato queda normalizado en la base.
+  useEffect(() => {
+    if (!perfiles.length) return;
+    setForm(f => {
+      const owner = canonPersona(f.owner, perfiles);
+      const responsable = canonPersona(f.responsable, perfiles);
+      if (owner === (f.owner || "") && responsable === (f.responsable || "")) return f;
+      return { ...f, owner, responsable };
+    });
+    setSubForm(sf => {
+      const responsable = canonPersona(sf.responsable, perfiles);
+      return responsable === (sf.responsable || "") ? sf : { ...sf, responsable };
+    });
+  }, [perfiles]);
 
   // Bloquear cierre accidental con Escape o Delete fuera de inputs
   useEffect(() => {
@@ -1372,9 +1465,13 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
     if (!form.dias_habiles.some(d => d)) return alert("Seleccioná al menos un día hábil");
     setSaving(true);
     try {
+      assertOnline();
       tarea?.id ? await api.actualizarTarea(tarea.id, form) : await api.crearTarea(form);
       onSave();
-    } catch (e) { alert("Error: " + e.message); }
+    } catch (e) {
+      console.error("Guardar tarea:", e);
+      notify?.("Error al guardar la tarea: " + e.message, "error");
+    }
     finally { setSaving(false); }
   };
 
@@ -1391,16 +1488,24 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
       return alert(`La fecha de fin no puede ser posterior a la tarea madre (${fmtDate(form.fecha_fin)})`);
     setSavingSubtarea(true);
     try {
+      assertOnline();
       if (editSubtareaId) {
         const updated = await api.actualizarSubtarea(editSubtareaId, subForm);
+        // .maybeSingle() devuelve null si RLS bloquea el SELECT posterior al UPDATE.
+        // Sin este guard el array quedaba con un null y el render explotaba.
+        if (!updated) throw new Error("La subtarea se actualizó pero no se pudo releer (revisá RLS de proyecto_subtareas). Recargá para ver el estado real.");
         setSubtareas(prev => prev.map(s => s.id === editSubtareaId ? updated : s));
       } else {
         const nueva = await api.crearSubtarea({ ...subForm, tarea_id: tarea.id, proyecto_id: proyectoId });
+        if (!nueva) throw new Error("La subtarea se creó pero no se pudo releer (revisá RLS de proyecto_subtareas). Recargá para verla.");
         setSubtareas(prev => [...prev, nueva]);
       }
       setSubForm(blankSubForm());
       setEditSubtareaId(null);
-    } catch (e) { alert("Error: " + e.message); }
+    } catch (e) {
+      console.error("Guardar subtarea:", e);
+      notify?.("Error al guardar la subtarea: " + e.message, "error");
+    }
     finally { setSavingSubtarea(false); }
   };
 
@@ -1413,10 +1518,12 @@ function TareaModal({ tarea, proyectoId, tareas, onClose, onSave, onEliminar, no
     if (confirmEliminarSubId !== id) { setConfirmEliminarSubId(id); return; }
     setConfirmEliminarSubId(null);
     try {
+      assertOnline();
       await api.eliminarSubtarea(id);
       setSubtareas(prev => prev.filter(s => s.id !== id));
     } catch (e) {
-      alert("Error al eliminar subtarea: " + e.message);
+      console.error("Eliminar subtarea:", e);
+      notify?.("Error al eliminar subtarea: " + e.message, "error");
     }
   };
 
