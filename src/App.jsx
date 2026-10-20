@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./lib/supabase";
+import { ArchivoLink } from "./lib/archivos";
 
 const PORTAL_URL = "https://integra.ploffshore.com";
 const EMPRESAS = ["Parana Logistica", "Clean Sea", "Terra Mare"];
@@ -2377,14 +2378,14 @@ function AdjuntosPanel({ proyectoId, tareaId = null, notify }) {
               }}>
                 <FileIcon tipo={adj.tipo} nombre={adj.nombre} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <a
+                  <ArchivoLink
                     href={adj.url}
                     target="_blank"
                     rel="noreferrer"
                     style={{ fontSize: 12, fontWeight: 600, color: "var(--blue)", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
                     {adj.nombre}
-                  </a>
+                  </ArchivoLink>
                   <div style={{ fontSize: 10, color: "var(--muted2)" }}>
                     {fmtTamanio(adj.tamanio)}{adj.created_at ? " · " + fmtDate(adj.created_at.slice(0,10)) : ""}
                   </div>
@@ -2513,10 +2514,10 @@ function AdjuntoFila({ adj, proyectoId, notify, onEliminar }) {
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--r)", marginBottom: 5 }}>
       <FileIcon tipo={adj.tipo} nombre={adj.nombre} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <a href={adj.url} target="_blank" rel="noreferrer"
+        <ArchivoLink href={adj.url} target="_blank" rel="noreferrer"
           style={{ fontSize: 12, fontWeight: 600, color: "var(--blue)", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {adj.nombre}
-        </a>
+        </ArchivoLink>
         <div style={{ fontSize: 10, color: "var(--muted2)" }}>{fmtTamanio(adj.tamanio)}{adj.created_at ? " · " + fmtDate(adj.created_at.slice(0,10)) : ""}</div>
       </div>
       <button onClick={handleEliminar} disabled={eliminando}
